@@ -1,5 +1,6 @@
 use anyhow::Result;
 use regex::Regex;
+use semver::Version;
 
 const DOCS_URL: &str = "http://docs.peachcloud.org/software";
 const GITHUB_URL: &str = "https://raw.githubusercontent.com/peachcloud";
@@ -8,11 +9,11 @@ const GITHUB_URL: &str = "https://raw.githubusercontent.com/peachcloud";
 struct Service {
     name: String,
     docs_url: String,
-    docs_version: Option<String>,
+    docs_version: Option<Version>,
     manifest_url: String,
-    manifest_version: Option<String>,
+    manifest_version: Option<Version>,
     readme_url: String,
-    readme_version: Option<String>,
+    readme_version: Option<Version>,
 }
 
 impl Service {
@@ -36,7 +37,7 @@ impl Service {
         let res = reqwest::get(&self.manifest_url).await?;
         let body = res.text().await?;
         if let Some(version) = regex_finder(r#"version = "(.*)""#, &body) {
-            self.manifest_version = Some(version)
+            self.manifest_version = Some(Version::parse(&version)?)
         }
 
         Ok(())
@@ -46,7 +47,7 @@ impl Service {
         let res = reqwest::get(&self.readme_url).await?;
         let body = res.text().await?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-", &body) {
-            self.readme_version = Some(version)
+            self.readme_version = Some(Version::parse(&version)?)
         }
 
         Ok(())
@@ -56,7 +57,7 @@ impl Service {
         let res = reqwest::get(&self.docs_url).await?;
         let body = res.text().await?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-%3C", &body) {
-            self.docs_version = Some(version)
+            self.docs_version = Some(Version::parse(&version)?)
         }
 
         Ok(())
