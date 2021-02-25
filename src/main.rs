@@ -2,34 +2,32 @@ use anyhow::Result;
 use regex::Regex;
 
 const DOCS_URL: &str = "http://docs.peachcloud.org/software";
-const GITHUB_URL: &str = "https://github.com/peachcloud";
-const MANIFEST_URL: &str = "https://raw.githubusercontent.com/peachcloud";
+const GITHUB_URL: &str = "https://raw.githubusercontent.com/peachcloud";
 
 #[derive(Debug)]
 struct Service {
     name: String,
     docs_url: String,
-    manifest_url: String,
-    repo_url: String,
-    readme_version: Option<String>,
     docs_version: Option<String>,
+    manifest_url: String,
     manifest_version: Option<String>,
-    //verified: bool,
+    readme_url: String,
+    readme_version: Option<String>,
 }
 
 impl Service {
     fn new(name: String) -> Self {
         let docs_url = format!("{}/{}/{}{}", DOCS_URL, "microservices", name, ".html");
-        let manifest_url = format!("{}/{}/main/Cargo.toml", MANIFEST_URL, name);
-        let repo_url = format!("{}/{}", GITHUB_URL, name);
+        let manifest_url = format!("{}/{}/main/Cargo.toml", GITHUB_URL, name);
+        let readme_url = format!("{}/{}/main/README.md", GITHUB_URL, name);
 
         Service {
             name,
             docs_url,
-            manifest_url,
-            repo_url,
             docs_version: None,
+            manifest_url,
             manifest_version: None,
+            readme_url,
             readme_version: None,
         }
     }
@@ -41,15 +39,18 @@ impl Service {
     }
 
     fn readme_version(&mut self, body: String) {
-        if let Some(version) = regex_finder(r"badge/version-(.*)-%3C", &body) {
+        if let Some(version) = regex_finder(r"badge/version-(.*)-", &body) {
             self.readme_version = Some(version)
         }
     }
 
-    fn docs_version(&mut self, body: String) {
+    fn docs_version(&mut self) -> Result<()> {
+        let body = reqwest::blocking::get(&self.docs_url)?.text()?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-%3C", &body) {
             self.docs_version = Some(version)
         }
+
+        Ok(())
     }
 }
 
@@ -65,13 +66,15 @@ fn regex_finder(pattern: &str, text: &str) -> Option<String> {
 fn main() -> Result<()> {
     let mut oled = Service::new("peach-oled".to_string());
 
-    let docs_body = reqwest::blocking::get(&oled.docs_url)?.text()?;
     let manifest_body = reqwest::blocking::get(&oled.manifest_url)?.text()?;
-    let repo_body = reqwest::blocking::get(&oled.repo_url)?.text()?;
+    let readme_body = reqwest::blocking::get(&oled.readme_url)?.text()?;
 
-    oled.docs_version(docs_body);
+    // slightly different approach: make request in method
+    oled.docs_version()?;
+
+    // pass request body into method
     oled.manifest_version(manifest_body);
-    oled.readme_version(repo_body);
+    oled.readme_version(readme_body);
 
     println!("{:#?}", oled);
 
