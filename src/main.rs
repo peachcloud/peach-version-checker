@@ -1,3 +1,4 @@
+use anyhow::Result;
 use regex::Regex;
 
 const DOCS_URL: &'static str = "http://docs.peachcloud.org/software";
@@ -34,7 +35,7 @@ fn regex_finder(pattern: &str, text: &str) -> Option<String> {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     let buttons = Service::new("peach-buttons".to_string());
 
     let body = reqwest::blocking::get(&buttons.repo_url)?.text()?;
