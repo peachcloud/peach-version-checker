@@ -32,25 +32,59 @@ impl Service {
         }
     }
 
-    fn manifest_version(&mut self, body: String) {
+    async fn manifest_version(&mut self) -> Result<()> {
+        let res = reqwest::get(&self.manifest_url).await?;
+        let body = res.text().await?;
         if let Some(version) = regex_finder(r#"version = "(.*)""#, &body) {
             self.manifest_version = Some(version)
         }
+
+        Ok(())
     }
 
-    fn readme_version(&mut self, body: String) {
+    async fn readme_version(&mut self) -> Result<()> {
+        let res = reqwest::get(&self.readme_url).await?;
+        let body = res.text().await?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-", &body) {
             self.readme_version = Some(version)
         }
+
+        Ok(())
     }
 
-    fn docs_version(&mut self) -> Result<()> {
-        let body = reqwest::blocking::get(&self.docs_url)?.text()?;
+    async fn docs_version(&mut self) -> Result<()> {
+        let res = reqwest::get(&self.docs_url).await?;
+        let body = res.text().await?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-%3C", &body) {
             self.docs_version = Some(version)
         }
 
         Ok(())
+    }
+
+    async fn check(&mut self) -> Result<()> {
+        self.docs_version().await?;
+        self.manifest_version().await?;
+        self.readme_version().await?;
+
+        Ok(())
+    }
+
+    fn report(self) {
+        // prints a report for the Service
+        println!("[ {} ]", self.name);
+        match self.docs_version {
+            Some(version) => println!("Dev-docs: {}", version),
+            None => println!("Dev-docs: No version number found"),
+        }
+        match self.manifest_version {
+            Some(version) => println!("Manifest: {}", version),
+            None => println!("Manifest: No version number found"),
+        }
+        match self.readme_version {
+            Some(version) => println!("Readme  : {}", version),
+            None => println!("Readme  : No version number found"),
+        }
     }
 }
 
@@ -63,20 +97,15 @@ fn regex_finder(pattern: &str, text: &str) -> Option<String> {
     }
 }
 
-fn main() -> Result<()> {
-    let mut oled = Service::new("peach-oled".to_string());
+#[tokio::main]
+async fn main() -> Result<()> {
+    let names = vec!["peach-buttons", "peach-oled", "peach-network"];
 
-    let manifest_body = reqwest::blocking::get(&oled.manifest_url)?.text()?;
-    let readme_body = reqwest::blocking::get(&oled.readme_url)?.text()?;
-
-    // slightly different approach: make request in method
-    oled.docs_version()?;
-
-    // pass request body into method
-    oled.manifest_version(manifest_body);
-    oled.readme_version(readme_body);
-
-    println!("{:#?}", oled);
+    for name in names {
+        let mut service = Service::new(name.to_string());
+        service.check().await?;
+        service.report();
+    }
 
     Ok(())
 }
