@@ -8,6 +8,7 @@ const GITHUB_URL: &str = "https://raw.githubusercontent.com/peachcloud";
 #[derive(Debug)]
 struct Service {
     name: String,
+    consistent: bool,
     docs_url: String,
     docs_version: Option<Version>,
     manifest_url: String,
@@ -24,6 +25,7 @@ impl Service {
 
         Service {
             name,
+            consistent: false,
             docs_url,
             docs_version: None,
             manifest_url,
@@ -68,11 +70,18 @@ impl Service {
         self.manifest_version().await?;
         self.readme_version().await?;
 
+        if self.docs_version == self.manifest_version
+            && self.manifest_version == self.readme_version
+        {
+            self.consistent = true
+        } else {
+            self.consistent = false
+        }
+
         Ok(())
     }
 
     fn report(self) {
-        // prints a report for the Service
         println!("[ {} ]", self.name);
         match self.docs_version {
             Some(version) => println!("Dev-docs: {}", version),
@@ -85,6 +94,10 @@ impl Service {
         match self.readme_version {
             Some(version) => println!("Readme  : {}", version),
             None => println!("Readme  : No version number found"),
+        }
+        match self.consistent {
+            true => println!("PASS"),
+            false => println!("FAIL"),
         }
     }
 }
