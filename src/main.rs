@@ -82,6 +82,7 @@ impl Service {
     }
 
     fn report(self) {
+        let mut terminal = term::stdout().unwrap();
         println!("[ {} ]", self.name);
         match self.docs_version {
             Some(version) => println!("Dev-docs: {}", version),
@@ -96,9 +97,18 @@ impl Service {
             None => println!("Readme  : No version number found"),
         }
         match self.consistent {
-            true => println!("PASS"),
-            false => println!("FAIL"),
+            true => {
+                terminal.fg(term::color::GREEN).unwrap();
+                terminal.attr(term::Attr::Bold).unwrap();
+                println!("PASS");
+            }
+            false => {
+                terminal.fg(term::color::RED).unwrap();
+                terminal.attr(term::Attr::Bold).unwrap();
+                println!("FAIL");
+            }
         }
+        terminal.reset().unwrap();
     }
 }
 
@@ -113,7 +123,15 @@ fn regex_finder(pattern: &str, text: &str) -> Option<String> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let names = vec!["peach-buttons", "peach-oled", "peach-network"];
+    let names = vec![
+        "peach-buttons",
+        "peach-oled",
+        "peach-network",
+        "peach-menu",
+        "peach-monitor",
+        "peach-probe",
+        "peach-stats",
+    ];
 
     for name in names {
         let mut service = Service::new(name.to_string());
