@@ -123,7 +123,7 @@ fn regex_finder(pattern: &str, text: &str) -> Option<String> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let names = vec![
+    let microservices = vec![
         "peach-buttons",
         "peach-oled",
         "peach-network",
@@ -133,11 +133,16 @@ async fn main() -> Result<()> {
         "peach-stats",
     ];
 
-    for name in names {
-        let mut service = Service::new(name.to_string());
+    for microservice in microservices {
+        let mut service = Service::new(microservice.to_string());
         service.check().await?;
         service.report();
     }
+
+    let mut web_interface = Service::new("peach-web".to_string());
+    web_interface.docs_url = format!("{}/{}", DOCS_URL, "web_interface.html");
+    web_interface.check().await?;
+    web_interface.report();
 
     Ok(())
 }
