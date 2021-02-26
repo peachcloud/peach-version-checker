@@ -36,9 +36,13 @@ impl Service {
     }
 
     async fn manifest_version(&mut self) -> Result<()> {
+        // perform GET request
         let res = reqwest::get(&self.manifest_url).await?;
+        // get the full response text
         let body = res.text().await?;
+        // pattern match on the text to locate the version number
         if let Some(version) = regex_finder(r#"version = "(.*)""#, &body) {
+            // parse the version number into Version and return
             self.manifest_version = Some(Version::parse(&version)?)
         }
 
@@ -66,10 +70,12 @@ impl Service {
     }
 
     async fn check(&mut self) -> Result<()> {
+        // retrieve the version numbers for docs, manifest and readme
         self.docs_version().await?;
         self.manifest_version().await?;
         self.readme_version().await?;
 
+        // check for consistency between version numbers
         if self.docs_version == self.manifest_version
             && self.manifest_version == self.readme_version
         {
@@ -108,10 +114,12 @@ impl Service {
                 println!("FAIL");
             }
         }
+        // reset the terminal defaults
         terminal.reset().unwrap();
     }
 }
 
+// simply helper function for regex pattern matching
 fn regex_finder(pattern: &str, text: &str) -> Option<String> {
     let re = Regex::new(pattern).unwrap();
     let caps = re.captures(text);
@@ -140,6 +148,7 @@ async fn main() -> Result<()> {
     }
 
     let mut web_interface = Service::new("peach-web".to_string());
+    // peach-web docs url pattern differs from microservices
     web_interface.docs_url = format!("{}/{}", DOCS_URL, "web_interface.html");
     web_interface.check().await?;
     web_interface.report();
