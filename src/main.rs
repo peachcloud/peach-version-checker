@@ -1,5 +1,6 @@
 use anyhow::Result;
 use regex::Regex;
+use reqwest::Client;
 use semver::Version;
 
 const DOCS_URL: &str = "http://docs.peachcloud.org/software";
@@ -7,6 +8,7 @@ const GITHUB_URL: &str = "https://raw.githubusercontent.com/peachcloud";
 
 #[derive(Debug)]
 struct Service {
+    client: Client,
     name: String,
     consistent: bool,
     docs_url: String,
@@ -18,12 +20,13 @@ struct Service {
 }
 
 impl Service {
-    fn new(name: String) -> Self {
+    fn new(client: Client, name: String) -> Self {
         let docs_url = format!("{}/{}/{}{}", DOCS_URL, "microservices", name, ".html");
         let manifest_url = format!("{}/{}/main/Cargo.toml", GITHUB_URL, name);
         let readme_url = format!("{}/{}/main/README.md", GITHUB_URL, name);
 
         Service {
+            client,
             name,
             consistent: false,
             docs_url,
@@ -37,7 +40,7 @@ impl Service {
 
     async fn manifest_version(&mut self) -> Result<()> {
         // perform GET request
-        let res = reqwest::get(&self.manifest_url).await?;
+        let res = self.client.get(&self.manifest_url).send().await?;
         // get the full response text
         let body = res.text().await?;
         // pattern match on the text to locate the version number
@@ -50,7 +53,7 @@ impl Service {
     }
 
     async fn readme_version(&mut self) -> Result<()> {
-        let res = reqwest::get(&self.readme_url).await?;
+        let res = self.client.get(&self.readme_url).send().await?;
         let body = res.text().await?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-", &body) {
             self.readme_version = Some(Version::parse(&version)?)
@@ -60,7 +63,7 @@ impl Service {
     }
 
     async fn docs_version(&mut self) -> Result<()> {
-        let res = reqwest::get(&self.docs_url).await?;
+        let res = self.client.get(&self.docs_url).send().await?;
         let body = res.text().await?;
         if let Some(version) = regex_finder(r"badge/version-(.*)-%3C", &body) {
             self.docs_version = Some(Version::parse(&version)?)
@@ -131,6 +134,9 @@ fn regex_finder(pattern: &str, text: &str) -> Option<String> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // create a new reqwest client (shared connection pool)
+    let client = Client::new();
+
     let microservices = vec![
         "peach-buttons",
         "peach-oled",
@@ -142,12 +148,12 @@ async fn main() -> Result<()> {
     ];
 
     for microservice in microservices {
-        let mut service = Service::new(microservice.to_string());
+        let mut service = Service::new(client.clone(), microservice.to_string());
         service.check().await?;
         service.report();
     }
 
-    let mut web_interface = Service::new("peach-web".to_string());
+    let mut web_interface = Service::new(client.clone(), "peach-web".to_string());
     // peach-web docs url pattern differs from microservices
     web_interface.docs_url = format!("{}/{}", DOCS_URL, "web_interface.html");
     web_interface.check().await?;
