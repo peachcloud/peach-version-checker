@@ -1,6 +1,6 @@
 # peach-version-checker
 
-![Generic badge](https://img.shields.io/badge/version-0.1.0-<COLOR>.svg)
+![Generic badge](https://img.shields.io/badge/version-0.1.1-<COLOR>.svg)
 
 A simple commandline tool which helps to ensure version consistency across software and documentation.
 

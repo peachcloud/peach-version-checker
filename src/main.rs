@@ -143,12 +143,21 @@ async fn main() -> Result<()> {
         "peach-network",
         "peach-menu",
         "peach-monitor",
-        "peach-probe",
         "peach-stats",
     ];
 
     for microservice in microservices {
         let mut service = Service::new(client.clone(), microservice.to_string());
+        service.check().await?;
+        service.report();
+    }
+
+    let utilities = vec!["peach-probe", "peach-version-checker"];
+
+    for utility in utilities {
+        let mut service = Service::new(client.clone(), utility.to_string());
+        // utility docs url pattern differs from microservices
+        service.docs_url = format!("{}/utilities/{}.html", DOCS_URL, utility.to_string());
         service.check().await?;
         service.report();
     }
