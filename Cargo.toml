@@ -1,6 +1,6 @@
 [package]
 name = "peach-version-checker"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Andrew Reid <gnomad@cryptolab.net>"]
 edition = "2018"
 
